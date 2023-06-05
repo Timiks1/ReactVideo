@@ -3,10 +3,14 @@ import { StyleSheet, View, Text, TouchableOpacity, FlatList, Image, Dimensions }
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { Camera } from 'expo-camera';
+import { Video } from 'expo-av';
+
 export default function App() {
   const [photos, setPhotos] = useState([]);
   const [cameraPermission, setCameraPermission] = useState(null);
   const cameraRef = useRef(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [videoUri, setVideoUri] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -38,81 +42,126 @@ export default function App() {
     }
   };
 
+  const startRecording = async () => {
+    if (cameraRef.current && !isRecording) {
+      setIsRecording(true);
+      const { uri } = await cameraRef.current.recordAsync();
+      setVideoUri(uri);
+    }
+  };
+
+  const stopRecording = () => {
+    if (cameraRef.current && isRecording) {
+      setIsRecording(false);
+      cameraRef.current.stopRecording();
+    }
+  };
+
   const renderPhoto = ({ item }) => (
     <TouchableOpacity style={styles.photoContainer}>
       <Image source={{ uri: item.uri }} style={styles.photo} />
     </TouchableOpacity>
   );
 
+  const renderVideo = () => (
+    <TouchableOpacity
+      style={styles.videoContainer}
+      onPress={() => setVideoUri(null)}
+    >
+      <Video
+        source={{ uri: videoUri }}
+        style={styles.video}
+        shouldPlay
+        isLooping
+        resizeMode="cover"
+      />
+    </TouchableOpacity>
+  );
+  
   const { width } = Dimensions.get('window');
   const numColumns = 2;
   const itemWidth = (width - 20) / numColumns;
 
   return (
     <View style={styles.container}>
-    {cameraPermission && (
-      <View style={styles.cameraContainer}>
-        <Camera style={styles.camera} type={Camera.Constants.Type.back} ref={cameraRef}>
-          <TouchableOpacity style={styles.takePictureButton} onPress={takePicture} />
-        </Camera>
-      </View>
-    )}
-    <FlatList
-      data={photos}
-      renderItem={renderPhoto}
-      keyExtractor={(item, index) => index.toString()}
-      numColumns={numColumns}
-      columnWrapperStyle={styles.columnWrapper}
-      contentContainerStyle={styles.contentContainer}
-      getItemLayout={(data, index) => ({
-        length: itemWidth,
-        offset: itemWidth * index,
-        index,
-      })}
-    />
-  </View>
-);
+      {cameraPermission && (
+        <View style={styles.cameraContainer}>
+          <Camera style={styles.camera} type={Camera.Constants.Type.back} ref={cameraRef}>
+            <TouchableOpacity style={styles.takePictureButton} onPress={takePicture} />
+            <TouchableOpacity
+              style={styles.recordButton}
+              onPress={isRecording ? stopRecording : startRecording}
+            />
+          </Camera>
+        </View>
+      )}
+
+      {videoUri && renderVideo()}
+
+      <FlatList
+        data={photos}
+        renderItem={renderPhoto}
+        keyExtractor={(item) => item.id.toString()}
+        numColumns={numColumns}
+        style={styles.photoList}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-container: {
-  flex: 1,
-  backgroundColor: '#fff',
-  justifyContent: 'center',
-  marginTop: 40,
-},
-cameraContainer: {
-  width: '50%',
-  height: 200,
-  position: 'relative',
-  
-},
-camera: {
-  flex: 1,
-  width: '100%',
-},
-takePictureButton: {
-  width: 30,
-  height: 30,
-  backgroundColor: 'white',
-  borderRadius: 30,
-  position: 'absolute',
-  bottom: 20,
-  alignSelf: 'center',
-},
-photoContainer: {
-  width: '50%',
-  padding: 5,
-},
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    marginTop: 40,
+  },
+  cameraContainer: {
+    width: '100%',
+    height: 400,
+    position: 'relative',
+  },
+  camera: {
+    flex: 1,
+    width: '100%',
+  },
+  takePictureButton: {
+    width: 30,
+    height: 30,
+    backgroundColor: 'white',
+    borderRadius: 30,
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+  },
+  recordButton: {
+    width: 60,
+    height: 60,
+    backgroundColor: 'red',
+    borderRadius: 30,
+    position: 'absolute',
+    bottom: 20,
+    alignSelf: 'center',
+    borderWidth: 4,
+    borderColor: 'white',
+  },
+  videoContainer: {
+    width: '100%',
+    height: 300,
+  },
+  video: {
+    flex: 1,
+  },
+  photoList: {
+    marginTop: 10,
+  },
+  photoContainer: {
+    width: '50%',
+    padding: 5,
+  },
   photo: {
     width: '100%',
     height: 150,
     resizeMode: 'cover',
     borderRadius: 5,
   },
-  buttons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '80%',
-  },
-})
+});
