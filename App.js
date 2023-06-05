@@ -82,7 +82,7 @@ export default function App() {
   const numColumns = 2;
   const itemWidth = (width - 20) / numColumns;
 
-  return (
+  return 
     <View style={styles.container}>
       {cameraPermission && (
         <View style={styles.cameraContainer}>
